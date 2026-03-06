@@ -1,0 +1,67 @@
+/* ============================================================
+   THEME — Late Spring Picnic
+   Warm cream, sage green, honey gold, linen textures.
+   To add a new theme: duplicate this file, change the tokens,
+   register in js/themes.js.
+   ============================================================ */
+
+:root,
+[data-theme="picnic"] {
+  /* Palette */
+  --bg-primary:        #FDF6E3;
+  --bg-secondary:      #F5EDD0;
+  --bg-tertiary:       #EDE0C0;
+  --surface:           rgba(255, 255, 255, 0.65);
+  --surface-hover:     rgba(255, 255, 255, 0.85);
+  --border:            rgba(125, 155, 118, 0.22);
+  --border-strong:     rgba(125, 155, 118, 0.45);
+
+  --accent-primary:    #7D9B76;   /* sage green */
+  --accent-primary-l:  #9BB894;   /* lighter sage */
+  --accent-secondary:  #C9A96E;   /* warm honey */
+  --accent-secondary-l:#DEC08A;   /* lighter honey */
+  --accent-danger:     #C47B6A;   /* muted terracotta */
+
+  --text-primary:      #3D2E1E;   /* dark bark */
+  --text-secondary:    #6B5744;   /* medium bark */
+  --text-muted:        #9A8472;   /* warm grey-brown */
+
+  /* Timer ring */
+  --ring-track:        rgba(125, 155, 118, 0.15);
+  --ring-focus:        #7D9B76;
+  --ring-short:        #C9A96E;
+  --ring-long:         #9BB8D4;
+
+  /* Glow for timer end */
+  --glow-color:        rgba(201, 169, 110, 0.5);
+
+  /* Typography */
+  --font-display:      'Lora', Georgia, serif;
+  --font-body:         'Inter', system-ui, sans-serif;
+
+  /* Radii */
+  --radius-sm:         8px;
+  --radius-md:         14px;
+  --radius-lg:         20px;
+  --radius-xl:         28px;
+  --radius-pill:       999px;
+
+  /* Shadows */
+  --shadow-sm:         0 1px 4px rgba(61, 46, 30, 0.08);
+  --shadow-md:         0 4px 16px rgba(61, 46, 30, 0.10);
+  --shadow-lg:         0 8px 32px rgba(61, 46, 30, 0.13);
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-mid:    250ms ease;
+  --transition-theme:  400ms ease;
+}
+
+/* Timer ring colour per mode */
+[data-mode="focus"]  .ring-progress { stroke: var(--ring-focus); }
+[data-mode="short"]  .ring-progress { stroke: var(--ring-short); }
+[data-mode="long"]   .ring-progress { stroke: var(--ring-long); }
+
+[data-mode="focus"]  .mode-tab[data-mode="focus"]  { background: var(--accent-primary); color: #fff; }
+[data-mode="short"]  .mode-tab[data-mode="short"]  { background: var(--accent-secondary); color: #fff; }
+[data-mode="long"]   .mode-tab[data-mode="long"]   { background: var(--ring-long); color: #fff; }
