@@ -40,6 +40,7 @@ export class Radio extends EventTarget {
   #ytPlayer      = null;     // YT.Player instance (if API loaded)
   #streamFailing  = false;
   #muted         = false;
+  #fadeTimer     = null;
 
   constructor() {
     super();
@@ -111,9 +112,54 @@ export class Radio extends EventTarget {
   unmute() { this.#muted = false; this.#applyMute(); }
   toggleMute() { this.#muted ? this.unmute() : this.mute(); }
 
-  /** Called when focus-only mode activates a silence period */
-  silenceForBreak() { if (this.#playing) { this.pause(); this.#emit('silenced', {}); } }
-  resumeForFocus()  { if (!this.#playing) { this.play(); } }
+  /** Fade out then pause (called when focus-only mode silences radio on breaks) */
+  silenceForBreak() {
+    if (!this.#playing) return;
+    clearInterval(this.#fadeTimer);
+    const start = this.#muted ? 0 : this.#volume;
+    const steps = 30;
+    let step = 0;
+    this.#fadeTimer = setInterval(() => {
+      step++;
+      const vol = start * (1 - step / steps);
+      this.#audio.volume = vol;
+      if (this.#ytPlayer?.setVolume) this.#ytPlayer.setVolume(Math.round(vol * 100));
+      if (step >= steps) {
+        clearInterval(this.#fadeTimer);
+        this.pause();
+        // Restore volume so next resume plays at correct level
+        this.#audio.volume = this.#muted ? 0 : this.#volume;
+        if (this.#ytPlayer?.setVolume) {
+          this.#ytPlayer.setVolume(this.#muted ? 0 : Math.round(this.#volume * 100));
+        }
+        this.#emit('silenced', {});
+      }
+    }, 1500 / steps);
+  }
+
+  /** Play from silence with fade-in */
+  resumeForFocus() {
+    if (this.#playing) return;
+    clearInterval(this.#fadeTimer);
+    this.play();
+    if (!this.#muted) {
+      this.#audio.volume = 0;
+      if (this.#ytPlayer?.setVolume) this.#ytPlayer.setVolume(0);
+      const target = this.#volume;
+      const steps = 30;
+      let step = 0;
+      this.#fadeTimer = setInterval(() => {
+        step++;
+        const vol = target * (step / steps);
+        this.#audio.volume = vol;
+        if (this.#ytPlayer?.setVolume) this.#ytPlayer.setVolume(Math.round(vol * 100));
+        if (step >= steps) {
+          clearInterval(this.#fadeTimer);
+          this.#audio.volume = this.#volume;
+        }
+      }, 1500 / steps);
+    }
+  }
 
   // ── Private: stream ─────────────────────────────────────────
 

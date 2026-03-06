@@ -112,8 +112,8 @@ class AmbientTrack {
   }
 
   /** Recompute and push volume to the YT player. */
-  applyEffectiveVolume(masterVol, muted, silenced) {
-    this.#effectiveVol = (muted || silenced) ? 0 : Math.round(this.#volume * masterVol * 100);
+  applyEffectiveVolume(masterVol, muted) {
+    this.#effectiveVol = muted ? 0 : Math.round(this.#volume * masterVol * 100);
     if (this.#player && this.#player.setVolume) {
       this.#player.setVolume(this.#effectiveVol);
     }
@@ -148,10 +148,11 @@ class AmbientTrack {
 }
 
 export class AmbientMixer extends EventTarget {
-  #tracks        = [];
-  #masterVol     = 0.5;
-  #muted         = false;
-  #breakSilenced = false;
+  #tracks    = [];
+  #masterVol = 0.5;
+  #muted     = false;
+  #fadeMult  = 1;     // 0–1 crossfade multiplier applied to masterVol
+  #fadeTimer = null;
 
   init() {
     this.#tracks = AMBIENT_TRACKS.map(def => new AmbientTrack(def));
@@ -187,10 +188,10 @@ export class AmbientMixer extends EventTarget {
   unmute()     { this.#muted = false; this.#applyAllVolumes(); }
   toggleMute() { this.#muted ? this.unmute() : this.mute(); }
 
-  /** Called when focus session starts — silence ambient without stopping tracks */
-  silenceForFocus() { this.#breakSilenced = true;  this.#applyAllVolumes(); }
-  /** Called when a break starts — restore ambient */
-  resumeForBreak()  { this.#breakSilenced = false; this.#applyAllVolumes(); }
+  /** Fade ambient out (called when focus session starts) */
+  silenceForFocus() { this.#fadeTo(0); }
+  /** Fade ambient back in (called when a break starts) */
+  resumeForBreak()  { this.#fadeTo(1); }
 
   trackState(id) {
     const t = this.#findTrack(id);
@@ -203,9 +204,27 @@ export class AmbientMixer extends EventTarget {
     return this.#tracks.find(t => t.def.id === id) || null;
   }
 
+  #fadeTo(target) {
+    clearInterval(this.#fadeTimer);
+    const start = this.#fadeMult;
+    const steps = 30;
+    let step = 0;
+    this.#fadeTimer = setInterval(() => {
+      step++;
+      this.#fadeMult = start + (target - start) * (step / steps);
+      this.#applyAllVolumes();
+      if (step >= steps) {
+        clearInterval(this.#fadeTimer);
+        this.#fadeMult = target;
+        this.#applyAllVolumes();
+      }
+    }, 1500 / steps);
+  }
+
   #applyAllVolumes() {
+    const effective = this.#masterVol * this.#fadeMult;
     for (const t of this.#tracks) {
-      t.applyEffectiveVolume(this.#masterVol, this.#muted, this.#breakSilenced);
+      t.applyEffectiveVolume(effective, this.#muted);
     }
   }
 
