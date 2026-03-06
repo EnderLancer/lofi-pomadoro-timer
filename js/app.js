@@ -162,6 +162,10 @@ timer.addEventListener('modechange', e => {
   handleFocusOnlyMusic();
 });
 
+timer.addEventListener('countdown', e => {
+  chime.countdown(e.detail.remaining);
+});
+
 timer.addEventListener('complete', e => {
   const { mode, sessionsDone } = e.detail;
 

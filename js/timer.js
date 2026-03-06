@@ -103,6 +103,10 @@ export class Timer extends EventTarget {
     this.#remaining--;
     this.#emit('tick', this.#tickData());
 
+    if (this.#remaining > 0 && this.#remaining <= 3) {
+      this.#emit('countdown', { remaining: this.#remaining });
+    }
+
     if (this.#remaining === 0) {
       this.pause();
       this.#onComplete();

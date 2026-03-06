@@ -37,6 +37,14 @@ export class Chime {
     this.#flashScreen(flashOverlayEl);
   }
 
+  /**
+   * Play a short soft countdown beep (3, 2, 1 before end).
+   * @param {number} remaining — seconds left (1–3)
+   */
+  countdown(remaining) {
+    this.#synthesizeBeep(remaining);
+  }
+
   // ── Private ─────────────────────────────────────────────────
 
   #ensureCtx() {
@@ -77,6 +85,27 @@ export class Chime {
       osc.start(now);
       osc.stop(now + decay);
     }
+  }
+
+  #synthesizeBeep(remaining) {
+    const ctx  = this.#ensureCtx();
+    const now  = ctx.currentTime;
+    // Pitch rises as countdown approaches zero: 3→660Hz, 2→770Hz, 1→880Hz
+    const hz   = 660 + (3 - remaining) * 110;
+    const decay = 0.25;
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, now);
+    masterGain.gain.linearRampToValueAtTime(this.#volume * 0.45, now + 0.008);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+    masterGain.connect(ctx.destination);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(hz, now);
+    osc.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + decay);
   }
 
   #pulseTimerFace(el) {
