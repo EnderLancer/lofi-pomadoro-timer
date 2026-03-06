@@ -14,6 +14,7 @@ const DEFAULTS = {
   longBreakInterval:  4,
   autoAdvance:        false,
   focusOnlyMusic:     false,
+  ambientOnBreak:     false,
   audioMode:          'radio',   // 'radio' | 'ambient' | 'both'
   radioVolume:        70,        // 0–100
   ambientMasterVol:   50,        // 0–100
@@ -39,6 +40,7 @@ export class Settings extends EventTarget {
   get longBreakInterval() { return this.#data.longBreakInterval; }
   get autoAdvance()       { return this.#data.autoAdvance; }
   get focusOnlyMusic()    { return this.#data.focusOnlyMusic; }
+  get ambientOnBreak()    { return this.#data.ambientOnBreak; }
   get audioMode()         { return this.#data.audioMode; }
   get radioVolume()       { return this.#data.radioVolume; }
   get ambientMasterVol()  { return this.#data.ambientMasterVol; }

@@ -140,11 +140,12 @@ class AmbientTrack {
 }
 
 export class AmbientMixer extends EventTarget {
-  #ctx          = null;
-  #masterGain   = null;
-  #tracks       = [];
-  #masterVol    = 0.5;
-  #muted        = false;
+  #ctx              = null;
+  #masterGain       = null;
+  #tracks           = [];
+  #masterVol        = 0.5;
+  #muted            = false;
+  #breakSilenced    = false;
 
   init() {
     if (this.#ctx) return;
@@ -194,6 +195,11 @@ export class AmbientMixer extends EventTarget {
   unmute()      { this.#muted = false; this.#applyMasterGain(); }
   toggleMute()  { this.#muted ? this.unmute() : this.mute(); }
 
+  /** Called when focus starts — silence ambient without stopping tracks */
+  silenceForFocus()  { this.#breakSilenced = true;  this.#applyMasterGain(); }
+  /** Called when a break starts — restore ambient that was silenced for focus */
+  resumeForBreak()   { this.#breakSilenced = false; this.#applyMasterGain(); }
+
   trackState(id) {
     const t = this.#findTrack(id);
     return t ? { active: t.active, volume: t.volume } : null;
@@ -212,7 +218,7 @@ export class AmbientMixer extends EventTarget {
   #applyMasterGain() {
     if (!this.#masterGain) return;
     this.#masterGain.gain.setTargetAtTime(
-      this.#muted ? 0 : this.#masterVol,
+      (this.#muted || this.#breakSilenced) ? 0 : this.#masterVol,
       this.#ctx.currentTime,
       0.05
     );

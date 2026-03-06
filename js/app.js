@@ -61,7 +61,8 @@ const ambientMasterVal   = $('ambient-master-value');
 const audioModeBtns  = document.querySelectorAll('.seg-btn[data-audio-mode]');
 const radioPanel     = $('radio-panel');
 const ambientPanel   = $('ambient-panel');
-const focusOnlyEl    = $('focus-only-toggle');
+const focusOnlyEl        = $('focus-only-toggle');
+const ambientOnBreakEl   = $('ambient-on-break-toggle');
 
 const taskLogEl      = $('task-log');
 const taskLogEmpty   = $('task-log-empty');
@@ -104,8 +105,9 @@ function init() {
   // Audio mode
   applyAudioMode(settings.audioMode);
 
-  // Focus-only toggle
-  focusOnlyEl.checked = settings.focusOnlyMusic;
+  // Focus-only / ambient-on-break toggles
+  focusOnlyEl.checked      = settings.focusOnlyMusic;
+  ambientOnBreakEl.checked = settings.ambientOnBreak;
 
   // Timer initial render
   renderTimerTick({
@@ -257,6 +259,11 @@ audioModeBtns.forEach(btn => {
 
 focusOnlyEl.addEventListener('change', () => {
   settings.set({ focusOnlyMusic: focusOnlyEl.checked });
+  handleFocusOnlyMusic();
+});
+
+ambientOnBreakEl.addEventListener('change', () => {
+  settings.set({ ambientOnBreak: ambientOnBreakEl.checked });
   handleFocusOnlyMusic();
 });
 
@@ -498,11 +505,24 @@ function applyAudioMode(mode) {
 }
 
 function handleFocusOnlyMusic() {
-  if (!settings.focusOnlyMusic) return;
-  if (timer.mode === TimerMode.FOCUS && timer.running) {
-    radio.resumeForFocus();
+  const isFocusRunning = timer.mode === TimerMode.FOCUS && timer.running;
+
+  if (settings.focusOnlyMusic) {
+    if (isFocusRunning) {
+      radio.resumeForFocus();
+    } else {
+      radio.silenceForBreak();
+    }
+  }
+
+  if (settings.ambientOnBreak) {
+    if (isFocusRunning) {
+      ambient.silenceForFocus();
+    } else {
+      ambient.resumeForBreak();
+    }
   } else {
-    radio.silenceForBreak();
+    ambient.resumeForBreak();
   }
 }
 
@@ -550,7 +570,8 @@ function applySettingsToModules() {
   radio.setVolume(settings.radioVolume / 100);
   ambient.setMasterVolume(settings.ambientMasterVol / 100);
   chime.setVolume(settings.chimeVolume / 100);
-  focusOnlyEl.checked = settings.focusOnlyMusic;
+  focusOnlyEl.checked      = settings.focusOnlyMusic;
+  ambientOnBreakEl.checked = settings.ambientOnBreak;
   applyAudioMode(settings.audioMode);
   renderSessionDots(sessionDotsEl, sessions.setCount, settings.longBreakInterval);
 }
