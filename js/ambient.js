@@ -106,6 +106,16 @@ class AmbientTrack {
     }
   }
 
+  /** Pause playback without changing #active (timer pause) */
+  suspend() {
+    if (this.#player && this.#player.pauseVideo) this.#player.pauseVideo();
+  }
+
+  /** Resume playback if track is active (timer resume) */
+  unsuspend() {
+    if (this.#active && this.#player && this.#player.playVideo) this.#player.playVideo();
+  }
+
   /** Set per-track volume (0-1). Call applyEffectiveVolume() to push to player. */
   setVolume(v) {
     this.#volume = Math.max(0, Math.min(1, v));
@@ -187,6 +197,11 @@ export class AmbientMixer extends EventTarget {
   mute()       { this.#muted = true;  this.#applyAllVolumes(); }
   unmute()     { this.#muted = false; this.#applyAllVolumes(); }
   toggleMute() { this.#muted ? this.unmute() : this.mute(); }
+
+  /** Pause all active track players without changing active state (timer pause) */
+  pauseAll()  { for (const t of this.#tracks) t.suspend(); }
+  /** Resume all active track players (timer resume) */
+  resumeAll() { for (const t of this.#tracks) t.unsuspend(); }
 
   /** Fade ambient out (called when focus session starts) */
   silenceForFocus() { this.#fadeTo(0); }

@@ -143,20 +143,34 @@ function init() {
 
 timer.addEventListener('tick', e => renderTimerTick(e.detail));
 
+let _radioPausedByTimer = false;
+
 timer.addEventListener('start', e => {
   btnStart.textContent = 'Pause';
   timerFaceEl.classList.add('running');
+  if (_radioPausedByTimer) {
+    _radioPausedByTimer = false;
+    // focusOnlyMusic case is handled by handleFocusOnlyMusic() below
+    if (!settings.focusOnlyMusic) radio.play();
+  }
+  ambient.resumeAll();
   handleFocusOnlyMusic();
 });
 
 timer.addEventListener('pause', () => {
   btnStart.textContent = 'Start';
   timerFaceEl.classList.remove('running');
+  if (radio.playing) {
+    _radioPausedByTimer = true;
+    radio.pause();
+  }
+  ambient.pauseAll();
 });
 
 timer.addEventListener('reset', () => {
   btnStart.textContent = 'Start';
   timerFaceEl.classList.remove('running');
+  _radioPausedByTimer = false;
 });
 
 timer.addEventListener('modechange', e => {
