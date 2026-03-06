@@ -1,72 +1,81 @@
 /**
- * ambient.js — Web Audio API ambient sound mixer
+ * ambient.js — YouTube-based ambient sound mixer
  *
- * Each track loops seamlessly using AudioBufferSourceNode.
- * Tracks can use local files (assets/sounds/) or remote URLs.
- * Per-track volume + master volume, individual on/off.
+ * Each track is a hidden YouTube IFrame player (loop enabled).
+ * Multiple tracks play simultaneously with independent volume.
+ * Master volume + mute applied by scaling each player's volume.
+ *
+ * To swap a sound: update the ytVideoId for that track.
  */
 
 export const AMBIENT_TRACKS = [
   {
-    id:    'rain',
-    name:  'Rain',
-    icon:  '\uD83C\uDF27',  // 🌧
-    src:   'assets/sounds/rain.mp3',
-    fallbackSrc: 'https://assets.mixkit.co/sfx/preview/mixkit-light-rain-loop-2393.mp3',
+    id:         'rain',
+    name:       'Rain',
+    icon:       '\uD83C\uDF27',  // 🌧
+    ytVideoId:  'nMfPqeZjc2c',  // Relaxing White Noise — Rain Sounds 8h
     defaultVol: 0.5,
   },
   {
-    id:    'cafe',
-    name:  'Café',
-    icon:  '\u2615',         // ☕
-    src:   'assets/sounds/cafe.mp3',
-    fallbackSrc: 'https://assets.mixkit.co/sfx/preview/mixkit-restaurant-crowd-talking-ambience-444.mp3',
+    id:         'cafe',
+    name:       'Café',
+    icon:       '\u2615',         // ☕
+    ytVideoId:  'h2zkV-l_TbY',  // Coffee Shop Ambience
     defaultVol: 0.35,
   },
   {
-    id:    'forest',
-    name:  'Forest',
-    icon:  '\uD83C\uDF3F',  // 🌿
-    src:   'assets/sounds/forest.mp3',
-    fallbackSrc: 'https://assets.mixkit.co/sfx/preview/mixkit-forest-birds-ambience-1210.mp3',
+    id:         'forest',
+    name:       'Forest',
+    icon:       '\uD83C\uDF3F',  // 🌿
+    ytVideoId:  'xNN7iTA57jM',  // Forest Birds & Nature Sounds
     defaultVol: 0.4,
   },
   {
-    id:    'fire',
-    name:  'Fireplace',
-    icon:  '\uD83D\uDD25',  // 🔥
-    src:   'assets/sounds/fire.mp3',
-    fallbackSrc: 'https://assets.mixkit.co/sfx/preview/mixkit-fireplace-crackling-1326.mp3',
+    id:         'fire',
+    name:       'Fireplace',
+    icon:       '\uD83D\uDD25',  // 🔥
+    ytVideoId:  'L_LUpnjgPso',  // Fireplace Crackling 10h
     defaultVol: 0.4,
   },
 ];
 
+/**
+ * Ensure YouTube IFrame API is loaded, then run cb().
+ * Chains with any existing onYouTubeIframeAPIReady (e.g. from radio.js)
+ * so both modules can coexist without overwriting each other's callback.
+ */
+function ensureYTApi(cb) {
+  if (window.YT && window.YT.Player) {
+    cb();
+    return;
+  }
+  const prev = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = () => {
+    if (typeof prev === 'function') prev();
+    cb();
+  };
+  if (!document.getElementById('yt-api-script')) {
+    const s = document.createElement('script');
+    s.id  = 'yt-api-script';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
+}
+
 class AmbientTrack {
-  #ctx;
-  #gainNode;
-  #masterGain;
-  #sourceNode  = null;
-  #buffer      = null;
-  #active      = false;
-  #volume;
-  #loaded      = false;
-  #loading     = false;
-  #triedFallback = false;
+  #player        = null;
+  #active        = false;
+  #pending       = false;  // waiting for API / player ready
+  #volume;                 // 0-1 per-track
+  #effectiveVol  = 0;      // 0-100 sent to YT player
 
-  constructor(ctx, masterGain, trackDef) {
-    this.#ctx        = ctx;
-    this.#masterGain = masterGain;
-    this.#volume     = trackDef.defaultVol;
-    this.def         = trackDef;
-
-    this.#gainNode = ctx.createGain();
-    this.#gainNode.gain.value = this.#volume;
-    this.#gainNode.connect(masterGain);
+  constructor(trackDef) {
+    this.def     = trackDef;
+    this.#volume = trackDef.defaultVol;
   }
 
-  get active()  { return this.#active; }
-  get volume()  { return this.#volume; }
-  get loaded()  { return this.#loaded; }
+  get active() { return this.#active; }
+  get volume() { return this.#volume; }
 
   async toggle() {
     if (this.#active) {
@@ -77,128 +86,111 @@ class AmbientTrack {
     return this.#active;
   }
 
-  async start() {
-    if (this.#active) return;
+  start() {
+    if (this.#active || this.#pending) return Promise.resolve();
     this.#active = true;
-    if (!this.#loaded) await this.#load();
-    if (this.#buffer) this.#startSource();
+    if (this.#player && this.#player.playVideo) {
+      this.#player.setVolume(this.#effectiveVol);
+      this.#player.playVideo();
+    } else {
+      this.#pending = true;
+      ensureYTApi(() => this.#createPlayer());
+    }
+    return Promise.resolve();
   }
 
   stop() {
     this.#active = false;
-    if (this.#sourceNode) {
-      try { this.#sourceNode.stop(); } catch (_) {}
-      this.#sourceNode.disconnect();
-      this.#sourceNode = null;
+    if (this.#player && this.#player.pauseVideo) {
+      this.#player.pauseVideo();
     }
   }
 
+  /** Set per-track volume (0-1). Call applyEffectiveVolume() to push to player. */
   setVolume(v) {
     this.#volume = Math.max(0, Math.min(1, v));
-    this.#gainNode.gain.setTargetAtTime(this.#volume, this.#ctx.currentTime, 0.05);
+  }
+
+  /** Recompute and push volume to the YT player. */
+  applyEffectiveVolume(masterVol, muted, silenced) {
+    this.#effectiveVol = (muted || silenced) ? 0 : Math.round(this.#volume * masterVol * 100);
+    if (this.#player && this.#player.setVolume) {
+      this.#player.setVolume(this.#effectiveVol);
+    }
   }
 
   // ── Private ────────────────────────────────────────────────
 
-  async #load() {
-    if (this.#loading) return;
-    this.#loading = true;
-    try {
-      await this.#fetchAndDecode(this.def.src);
-    } catch {
-      if (!this.#triedFallback && this.def.fallbackSrc) {
-        this.#triedFallback = true;
-        try {
-          await this.#fetchAndDecode(this.def.fallbackSrc);
-        } catch {
-          console.warn(`[Ambient] Could not load ${this.def.name}`);
-        }
-      }
-    }
-    this.#loading = false;
-  }
+  #createPlayer() {
+    const host = document.createElement('div');
+    host.id = `yt-ambient-${this.def.id}`;
+    document.body.appendChild(host);
 
-  async #fetchAndDecode(url) {
-    const resp   = await fetch(url);
-    const ab     = await resp.arrayBuffer();
-    this.#buffer = await this.#ctx.decodeAudioData(ab);
-    this.#loaded = true;
-  }
-
-  #startSource() {
-    this.#sourceNode             = this.#ctx.createBufferSource();
-    this.#sourceNode.buffer      = this.#buffer;
-    this.#sourceNode.loop        = true;
-    this.#sourceNode.connect(this.#gainNode);
-    this.#sourceNode.start();
-
-    // Re-start if it ever ends unexpectedly (shouldn't with loop, but guard)
-    this.#sourceNode.onended = () => {
-      if (this.#active) this.#startSource();
-    };
+    this.#player = new window.YT.Player(host.id, {
+      width:  '0',
+      height: '0',
+      videoId: this.def.ytVideoId,
+      playerVars: { autoplay: 1, controls: 0, loop: 1, playlist: this.def.ytVideoId },
+      events: {
+        onReady: (e) => {
+          this.#pending = false;
+          e.target.setVolume(this.#effectiveVol);
+          if (this.#active) e.target.playVideo();
+        },
+        onError: () => {
+          this.#pending = false;
+          this.#active  = false;
+          console.warn(`[Ambient] YouTube player error for "${this.def.name}"`);
+        },
+      },
+    });
   }
 }
 
 export class AmbientMixer extends EventTarget {
-  #ctx              = null;
-  #masterGain       = null;
-  #tracks           = [];
-  #masterVol        = 0.5;
-  #muted            = false;
-  #breakSilenced    = false;
+  #tracks        = [];
+  #masterVol     = 0.5;
+  #muted         = false;
+  #breakSilenced = false;
 
   init() {
-    if (this.#ctx) return;
-    this.#ctx        = new (window.AudioContext || window.webkitAudioContext)();
-    this.#masterGain = this.#ctx.createGain();
-    this.#masterGain.gain.value = this.#masterVol;
-    this.#masterGain.connect(this.#ctx.destination);
-
-    this.#tracks = AMBIENT_TRACKS.map(def => new AmbientTrack(this.#ctx, this.#masterGain, def));
+    this.#tracks = AMBIENT_TRACKS.map(def => new AmbientTrack(def));
     this.#emit('ready', { tracks: AMBIENT_TRACKS });
   }
 
-  /** Must be called inside a user gesture to resume suspended AudioContext */
-  resume() {
-    if (this.#ctx && this.#ctx.state === 'suspended') {
-      this.#ctx.resume();
-    }
-  }
+  /** No-op: kept for API compatibility (was AudioContext.resume()) */
+  resume() {}
 
   async toggleTrack(id) {
-    this.#ensureInit();
-    this.resume();
     const track = this.#findTrack(id);
     if (!track) return;
     const nowActive = await track.toggle();
+    this.#applyAllVolumes();
     this.#emit('trackchange', { id, active: nowActive });
     return nowActive;
   }
 
   setTrackVolume(id, v) {
     const track = this.#findTrack(id);
-    if (track) track.setVolume(v);
+    if (track) {
+      track.setVolume(v);
+      this.#applyAllVolumes();
+    }
   }
 
   setMasterVolume(v) {
     this.#masterVol = Math.max(0, Math.min(1, v));
-    if (this.#masterGain) {
-      this.#masterGain.gain.setTargetAtTime(
-        this.#muted ? 0 : this.#masterVol,
-        this.#ctx.currentTime,
-        0.05
-      );
-    }
+    this.#applyAllVolumes();
   }
 
-  mute()        { this.#muted = true;  this.#applyMasterGain(); }
-  unmute()      { this.#muted = false; this.#applyMasterGain(); }
-  toggleMute()  { this.#muted ? this.unmute() : this.mute(); }
+  mute()       { this.#muted = true;  this.#applyAllVolumes(); }
+  unmute()     { this.#muted = false; this.#applyAllVolumes(); }
+  toggleMute() { this.#muted ? this.unmute() : this.mute(); }
 
-  /** Called when focus starts — silence ambient without stopping tracks */
-  silenceForFocus()  { this.#breakSilenced = true;  this.#applyMasterGain(); }
-  /** Called when a break starts — restore ambient that was silenced for focus */
-  resumeForBreak()   { this.#breakSilenced = false; this.#applyMasterGain(); }
+  /** Called when focus session starts — silence ambient without stopping tracks */
+  silenceForFocus() { this.#breakSilenced = true;  this.#applyAllVolumes(); }
+  /** Called when a break starts — restore ambient */
+  resumeForBreak()  { this.#breakSilenced = false; this.#applyAllVolumes(); }
 
   trackState(id) {
     const t = this.#findTrack(id);
@@ -207,21 +199,14 @@ export class AmbientMixer extends EventTarget {
 
   // ── Private ────────────────────────────────────────────────
 
-  #ensureInit() {
-    if (!this.#ctx) this.init();
-  }
-
   #findTrack(id) {
     return this.#tracks.find(t => t.def.id === id) || null;
   }
 
-  #applyMasterGain() {
-    if (!this.#masterGain) return;
-    this.#masterGain.gain.setTargetAtTime(
-      (this.#muted || this.#breakSilenced) ? 0 : this.#masterVol,
-      this.#ctx.currentTime,
-      0.05
-    );
+  #applyAllVolumes() {
+    for (const t of this.#tracks) {
+      t.applyEffectiveVolume(this.#masterVol, this.#muted, this.#breakSilenced);
+    }
   }
 
   #emit(type, detail) {

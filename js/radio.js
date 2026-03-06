@@ -167,19 +167,19 @@ export class Radio extends EventTarget {
   }
 
   #loadYTApi(videoId) {
-    if (document.getElementById('yt-api-script')) {
-      // already loading, wait
-      window.__ytPendingPlay = videoId;
-      return;
-    }
     window.__ytPendingPlay = videoId;
+    // Chain onto any existing callback (e.g. from ambient.js) instead of overwriting it
+    const prev = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
+      if (typeof prev === 'function') prev();
       this.#initYTPlayer(window.__ytPendingPlay);
     };
-    const s = document.createElement('script');
-    s.id  = 'yt-api-script';
-    s.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
+    if (!document.getElementById('yt-api-script')) {
+      const s = document.createElement('script');
+      s.id  = 'yt-api-script';
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    }
   }
 
   #initYTPlayer(videoId) {
