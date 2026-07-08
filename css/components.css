@@ -469,6 +469,96 @@
   color: var(--accent-primary);
 }
 
+/* ── Add station ───────────────────────────────────────────── */
+.add-station-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.btn-add-station {
+  width: 100%;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 6px 0;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.btn-add-station:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(125, 155, 118, 0.06);
+}
+
+.add-station-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-strong);
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+.add-station-form.hidden {
+  display: none;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.add-station-input {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.add-station-input::placeholder { color: var(--text-muted); }
+.add-station-input:focus { border-color: var(--accent-primary); }
+
+.add-station-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+/* Delete button on custom station cards */
+.btn-delete-station {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.station-card:hover .btn-delete-station { opacity: 1; }
+.btn-delete-station:hover {
+  color: #d45;
+  background: rgba(221, 68, 85, 0.1);
+}
+
 /* ── Stream status ─────────────────────────────────────────── */
 .stream-status {
   font-size: 0.75rem;

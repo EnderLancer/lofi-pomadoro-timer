@@ -4,6 +4,8 @@
  * Each station declares:
  *  - streamUrl: direct MP3/AAC stream (tried first)
  *  - ytVideoId:  YouTube video ID used as iframe fallback
+ *
+ * Custom (user-added) stations are merged via getAllStations().
  */
 
 export const STATIONS = [
@@ -30,8 +32,14 @@ export const STATIONS = [
   },
 ];
 
+/** Merge built-in stations with user-added custom stations */
+export function getAllStations(customStations = []) {
+  return [...STATIONS, ...customStations];
+}
+
 export class Radio extends EventTarget {
   #audio         = new Audio();
+  #allStations   = [...STATIONS];
   #currentIdx    = 0;
   #playing       = false;
   #volume        = 0.7;
@@ -57,7 +65,8 @@ export class Radio extends EventTarget {
 
   get playing()     { return this.#playing; }
   get currentIdx()  { return this.#currentIdx; }
-  get station()     { return STATIONS[this.#currentIdx]; }
+  get station()     { return this.#allStations[this.#currentIdx]; }
+  get stationCount() { return this.#allStations.length; }
   get volume()      { return this.#volume; }
   get usingYT()     { return this.#useYT; }
 
@@ -93,7 +102,8 @@ export class Radio extends EventTarget {
     this.pause();
     this.#streamFailing = false;
     this.#useYT         = false;
-    this.#currentIdx    = ((idx % STATIONS.length) + STATIONS.length) % STATIONS.length;
+    const len = this.#allStations.length;
+    this.#currentIdx    = ((idx % len) + len) % len;
     this.#audio.src     = '';
     this.#emit('stationchange', { idx: this.#currentIdx, station: this.station });
     if (wasPlaying) this.play();
@@ -161,10 +171,25 @@ export class Radio extends EventTarget {
     }
   }
 
+  /** Rebuild station list when custom stations change */
+  refreshStations(customStations = []) {
+    this.#allStations = getAllStations(customStations);
+    // Clamp current index
+    if (this.#currentIdx >= this.#allStations.length) {
+      this.#currentIdx = 0;
+    }
+    this.#renderStations();
+  }
+
   // ── Private: stream ─────────────────────────────────────────
 
   #streamPlay() {
     const station = this.station;
+    if (!station.streamUrl) {
+      // YouTube-only station — skip directly to YT
+      this.#switchToYT();
+      return;
+    }
     this.#emit('status', { text: 'Connecting…' });
     this.#audio.src    = station.streamUrl;
     this.#audio.volume = this.#muted ? 0 : this.#volume;
@@ -289,7 +314,7 @@ export class Radio extends EventTarget {
   }
 
   #renderStations() {
-    this.#emit('ready', { stations: STATIONS, currentIdx: this.#currentIdx });
+    this.#emit('ready', { stations: this.#allStations, currentIdx: this.#currentIdx });
   }
 
   #emit(type, detail) {

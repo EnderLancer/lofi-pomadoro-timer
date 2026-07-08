@@ -10,7 +10,7 @@
  */
 
 import { Timer, TimerMode }           from './timer.js';
-import { Radio, STATIONS }            from './radio.js';
+import { Radio, STATIONS, getAllStations } from './radio.js';
 import { AmbientMixer, AMBIENT_TRACKS } from './ambient.js';
 import { Chime }                       from './chime.js';
 import { Settings }                    from './settings.js';
@@ -54,6 +54,15 @@ const radioVolumeVal = $('radio-volume-value');
 const streamStatusEl = $('stream-status');
 const ytIframeEl     = $('yt-iframe');
 
+const btnShowAdd     = $('btn-show-add-station');
+const addFormEl      = $('add-station-form');
+const addNameEl      = $('add-station-name');
+const addGenreEl     = $('add-station-genre');
+const addUrlEl       = $('add-station-url');
+const btnCancelAdd   = $('btn-cancel-add');
+const btnConfirmAdd  = $('btn-confirm-add');
+const addRowEl       = $('add-station-row');
+
 const ambientTracksEl    = $('ambient-tracks');
 const ambientMasterEl    = $('ambient-master-volume');
 const ambientMasterVal   = $('ambient-master-value');
@@ -92,10 +101,18 @@ function init() {
   // Radio
   radio.init(ytIframeEl);
   radio.setVolume(settings.radioVolume / 100);
+  radio.refreshStations(settings.customStations);
   radio.addEventListener('ready', () => {
     renderStations();
   });
   radio.dispatchEvent(new CustomEvent('ready', { detail: {} })); // trigger render
+
+  // Re-render stations when custom stations change
+  settings.addEventListener('change', e => {
+    if (e.detail.customStations) {
+      radio.refreshStations(settings.customStations);
+    }
+  });
 
   // Ambient
   ambient.addEventListener('ready', () => renderAmbientTracks());
@@ -249,6 +266,82 @@ radioVolumeEl.addEventListener('input', () => {
   radioVolumeVal.textContent = v + '%';
   setSliderFill(radioVolumeEl, v);
   settings.set({ radioVolume: v });
+});
+
+// ── Add custom station form ───────────────────────────────────────
+
+function parseYouTubeId(input) {
+  input = input.trim();
+  // Try URL patterns: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/live/ID
+  try {
+    const url = new URL(input);
+    if (url.hostname.includes('youtube.com')) {
+      // /watch?v=ID
+      const v = url.searchParams.get('v');
+      if (v) return v;
+      // /live/ID or /embed/ID
+      const parts = url.pathname.split('/');
+      const last = parts[parts.length - 1];
+      if (last && last.length >= 11) return last;
+    }
+    if (url.hostname === 'youtu.be') {
+      return url.pathname.slice(1);
+    }
+  } catch { /* not a URL */ }
+  // Bare video ID (typically 11 chars, alphanumeric + - _)
+  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+  return null;
+}
+
+function showAddForm() {
+  addFormEl.classList.remove('hidden');
+  addRowEl.classList.add('hidden');
+  addNameEl.focus();
+}
+
+function hideAddForm() {
+  addFormEl.classList.add('hidden');
+  addRowEl.classList.remove('hidden');
+  addNameEl.value = '';
+  addGenreEl.value = '';
+  addUrlEl.value = '';
+}
+
+btnShowAdd.addEventListener('click', showAddForm);
+btnCancelAdd.addEventListener('click', hideAddForm);
+
+btnConfirmAdd.addEventListener('click', () => {
+  const name = addNameEl.value.trim();
+  const url  = addUrlEl.value.trim();
+  if (!name) { addNameEl.focus(); return; }
+
+  const ytId = parseYouTubeId(url);
+  if (!ytId) {
+    addUrlEl.setCustomValidity('Enter a YouTube URL or video ID');
+    addUrlEl.reportValidity();
+    addUrlEl.focus();
+    return;
+  }
+  addUrlEl.setCustomValidity('');
+
+  const station = {
+    id:        'custom-' + Date.now(),
+    name,
+    genre:     addGenreEl.value.trim() || 'Custom',
+    streamUrl: '',   // YouTube-only
+    ytVideoId: ytId,
+  };
+
+  settings.addCustomStation(station);
+  hideAddForm();
+});
+
+// Allow Enter to submit the form from any input
+[addNameEl, addGenreEl, addUrlEl].forEach(el => {
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); btnConfirmAdd.click(); }
+    if (e.key === 'Escape') { hideAddForm(); }
+  });
 });
 
 // ── Ambient DOM bindings ──────────────────────────────────────────
@@ -423,26 +516,50 @@ function updateModeTab(mode) {
 }
 
 function renderStations() {
+  const all = getAllStations(settings.customStations);
   stationListEl.innerHTML = '';
-  STATIONS.forEach((s, idx) => {
+  all.forEach((s, idx) => {
+    const isCustom = idx >= STATIONS.length;
     const card = document.createElement('div');
     card.className   = 'station-card' + (idx === settings.currentStation ? ' active' : '');
     card.role        = 'option';
     card.dataset.idx = idx;
     card.setAttribute('aria-selected', idx === settings.currentStation ? 'true' : 'false');
+
+    const badge = isCustom
+      ? '<span class="station-mode-badge">YT</span>'
+      : '<span class="station-mode-badge">MP3 + YT</span>';
+
+    const deleteBtn = isCustom
+      ? `<button class="btn-delete-station" data-station-id="${escHtml(s.id)}" title="Remove station" aria-label="Remove ${escHtml(s.name)}">&#10005;</button>`
+      : '';
+
     card.innerHTML = `
       <span class="station-dot"></span>
       <span class="station-info">
         <span class="station-name">${escHtml(s.name)}</span>
         <span class="station-genre">${escHtml(s.genre)}</span>
       </span>
-      <span class="station-mode-badge">MP3 + YT</span>
+      ${badge}
+      ${deleteBtn}
     `;
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      // Don't select station if delete button was clicked
+      if (e.target.closest('.btn-delete-station')) return;
       ambient.resume();
       radio.selectStation(idx);
       if (!radio.playing) radio.play();
     });
+
+    // Wire delete button
+    if (isCustom) {
+      const delBtn = card.querySelector('.btn-delete-station');
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settings.removeCustomStation(s.id);
+      });
+    }
+
     stationListEl.appendChild(card);
   });
 }

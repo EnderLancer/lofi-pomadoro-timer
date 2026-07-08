@@ -22,6 +22,7 @@ const DEFAULTS = {
   theme:              'picnic',
   currentStation:     0,
   ambientTrackVols:   {},        // { [trackId]: 0-100 }
+  customStations:     [],        // [{ id, name, genre, streamUrl, ytVideoId }]
 };
 
 export class Settings extends EventTarget {
@@ -48,6 +49,7 @@ export class Settings extends EventTarget {
   get theme()             { return this.#data.theme; }
   get currentStation()    { return this.#data.currentStation; }
   get ambientTrackVols()  { return this.#data.ambientTrackVols; }
+  get customStations()    { return this.#data.customStations; }
 
   /**
    * Update one or many settings at once.
@@ -70,6 +72,20 @@ export class Settings extends EventTarget {
   setAmbientTrackVol(id, vol) {
     const vols = { ...this.#data.ambientTrackVols, [id]: vol };
     this.set({ ambientTrackVols: vols });
+  }
+
+  addCustomStation(station) {
+    const list = [...this.#data.customStations, station];
+    this.#data.customStations = list;
+    this.#save();
+    this.#emit('change', { customStations: list });
+  }
+
+  removeCustomStation(id) {
+    const list = this.#data.customStations.filter(s => s.id !== id);
+    this.#data.customStations = list;
+    this.#save();
+    this.#emit('change', { customStations: list });
   }
 
   reset() {

@@ -118,6 +118,20 @@
             <!-- rendered by radio.js -->
           </div>
 
+          <!-- Add custom station -->
+          <div class="add-station-row" id="add-station-row">
+            <button class="btn-icon btn-add-station" id="btn-show-add-station" title="Add custom YouTube station" aria-label="Add custom YouTube station">&#43;</button>
+          </div>
+          <div class="add-station-form hidden" id="add-station-form">
+            <input type="text" id="add-station-name"  placeholder="Station name" maxlength="40" class="add-station-input" autocomplete="off" />
+            <input type="text" id="add-station-genre" placeholder="Genre (optional)" maxlength="40" class="add-station-input" autocomplete="off" />
+            <input type="text" id="add-station-url"   placeholder="YouTube URL or Video ID" maxlength="200" class="add-station-input" autocomplete="off" />
+            <div class="add-station-actions">
+              <button class="btn-secondary btn-sm" id="btn-cancel-add">Cancel</button>
+              <button class="btn-primary btn-sm"   id="btn-confirm-add">Add</button>
+            </div>
+          </div>
+
           <!-- Radio volume -->
           <div class="volume-row">
             <span class="volume-icon" aria-hidden="true">&#9834;</span>
