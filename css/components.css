@@ -115,6 +115,15 @@
   width: 220px;
   height: 220px;
   margin-bottom: 24px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.timer-face:active,
+.timer-face.dragging {
+  cursor: grabbing;
 }
 
 .timer-ring {
@@ -140,6 +149,23 @@
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 1s linear, stroke var(--transition-mid);
   filter: drop-shadow(0 0 6px var(--glow-color));
+}
+
+/* Hover and dragging state styles */
+.timer-face:hover .ring-progress {
+  stroke-width: 8px;
+  filter: drop-shadow(0 0 10px var(--glow-color));
+}
+
+.timer-face:hover,
+.timer-face.dragging {
+  r: 10px;
+  fill: var(--accent-secondary) !important; /* override mode defaults on hover/drag */
+}
+
+.timer-face.dragging .ring-progress,
+.timer-face.dragging {
+  transition: none !important;
 }
 
 .timer-display {

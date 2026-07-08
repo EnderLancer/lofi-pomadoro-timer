@@ -78,6 +78,16 @@ export class Timer extends EventTarget {
     this.#advance(false);
   }
 
+  setRemaining(seconds, isDragging = false) {
+    this.#remaining = Math.max(0, Math.min(Math.round(seconds), this.#totalSecs));
+    this.#emit('tick', this.#tickData());
+
+    if (this.#remaining === 0 && !isDragging) {
+      this.pause();
+      this.#onComplete();
+    }
+  }
+
   /** Called by settings module when values change */
   onSettingsChange() {
     const wasRunning = this.#running;

@@ -9,81 +9,81 @@
  *  - Sync settings UI ↔ settings object
  */
 
-import { Timer, TimerMode }           from './timer.js';
+import { Timer, TimerMode } from './timer.js';
 import { Radio, STATIONS, getAllStations } from './radio.js';
 import { AmbientMixer, AMBIENT_TRACKS } from './ambient.js';
-import { Chime }                       from './chime.js';
-import { Settings }                    from './settings.js';
-import { TaskTracker, renderTaskLog }  from './tasks.js';
+import { Chime } from './chime.js';
+import { Settings } from './settings.js';
+import { TaskTracker, renderTaskLog } from './tasks.js';
 import { SessionCounter, renderSessionDots } from './sessions.js';
-import { ThemeManager }                from './themes.js';
+import { ThemeManager } from './themes.js';
 
 // ── Instantiate modules ─────────────────────────────────────────
 
 const settings = new Settings();
-const timer    = new Timer(settings);
-const radio    = new Radio();
-const ambient  = new AmbientMixer();
-const chime    = new Chime();
-const tasks    = new TaskTracker();
+const timer = new Timer(settings);
+const radio = new Radio();
+const ambient = new AmbientMixer();
+const chime = new Chime();
+const tasks = new TaskTracker();
 const sessions = new SessionCounter();
-const themes   = new ThemeManager();
+const themes = new ThemeManager();
 
 // ── DOM refs ─────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
 
-const timerFaceEl    = $('timer-face');
-const timerDigitsEl  = $('timer-digits');
-const timerLabelEl   = $('timer-phase-label');
+const timerFaceEl = $('timer-face');
+const timerDigitsEl = $('timer-digits');
+const timerLabelEl = $('timer-phase-label');
 const ringProgressEl = $('ring-progress');
-const btnStart       = $('btn-start');
-const btnReset       = $('btn-reset');
-const btnSkip        = $('btn-skip');
-const modeTabs       = document.querySelectorAll('.mode-tab');
-const sessionDotsEl  = $('session-dots');
-const taskInputEl    = $('task-input');
-const flashOverlay   = $('flash-overlay');
+const btnStart = $('btn-start');
+const btnReset = $('btn-reset');
+const btnSkip = $('btn-skip');
+const modeTabs = document.querySelectorAll('.mode-tab');
+const sessionDotsEl = $('session-dots');
+const taskInputEl = $('task-input');
+const flashOverlay = $('flash-overlay');
 
-const stationListEl  = $('station-list');
-const btnPlayRadio   = $('btn-play-radio');
+const stationListEl = $('station-list');
+const btnPlayRadio = $('btn-play-radio');
 const btnPrevStation = $('btn-prev-station');
 const btnNextStation = $('btn-next-station');
-const radioVolumeEl  = $('radio-volume');
+const radioVolumeEl = $('radio-volume');
 const radioVolumeVal = $('radio-volume-value');
 const streamStatusEl = $('stream-status');
-const ytIframeEl     = $('yt-iframe');
+const ytIframeEl = $('yt-iframe');
 
-const btnShowAdd     = $('btn-show-add-station');
-const addFormEl      = $('add-station-form');
-const addNameEl      = $('add-station-name');
-const addGenreEl     = $('add-station-genre');
-const addUrlEl       = $('add-station-url');
-const btnCancelAdd   = $('btn-cancel-add');
-const btnConfirmAdd  = $('btn-confirm-add');
-const addRowEl       = $('add-station-row');
+const btnShowAdd = $('btn-show-add-station');
+const addFormEl = $('add-station-form');
+const addNameEl = $('add-station-name');
+const addGenreEl = $('add-station-genre');
+const addUrlEl = $('add-station-url');
+const btnCancelAdd = $('btn-cancel-add');
+const btnConfirmAdd = $('btn-confirm-add');
+const addRowEl = $('add-station-row');
 
-const ambientTracksEl    = $('ambient-tracks');
-const ambientMasterEl    = $('ambient-master-volume');
-const ambientMasterVal   = $('ambient-master-value');
+const ambientTracksEl = $('ambient-tracks');
+const ambientMasterEl = $('ambient-master-volume');
+const ambientMasterVal = $('ambient-master-value');
 
-const audioModeBtns  = document.querySelectorAll('.seg-btn[data-audio-mode]');
-const radioPanel     = $('radio-panel');
-const ambientPanel   = $('ambient-panel');
-const focusOnlyEl        = $('focus-only-toggle');
-const ambientOnBreakEl   = $('ambient-on-break-toggle');
+const audioModeBtns = document.querySelectorAll('.seg-btn[data-audio-mode]');
+const radioPanel = $('radio-panel');
+const ambientPanel = $('ambient-panel');
+const focusOnlyEl = $('focus-only-toggle');
+const ambientOnBreakEl = $('ambient-on-break-toggle');
 
-const taskLogEl      = $('task-log');
-const taskLogEmpty   = $('task-log-empty');
-const btnClearLog    = $('btn-clear-log');
+const taskLogEl = $('task-log');
+const taskLogEmpty = $('task-log-empty');
+const btnClearLog = $('btn-clear-log');
 
-const settingsPanel  = $('settings-panel');
-const settingsBack   = $('settings-backdrop');
-const btnOpenSettings= $('btn-settings');
-const btnCloseSettings= $('btn-close-settings');
-const btnResetSettings= $('btn-reset-settings');
+const settingsPanel = $('settings-panel');
+const settingsBack = $('settings-backdrop');
+const btnOpenSettings = $('btn-settings');
+const btnCloseSettings = $('btn-close-settings');
+const btnResetSettings = $('btn-reset-settings');
 
-const sThemeEl       = $('s-theme');
+const sThemeEl = $('s-theme');
 
 // ── Init ────────────────────────────────────────────────────────
 
@@ -123,16 +123,16 @@ function init() {
   applyAudioMode(settings.audioMode);
 
   // Focus-only / ambient-on-break toggles
-  focusOnlyEl.checked      = settings.focusOnlyMusic;
+  focusOnlyEl.checked = settings.focusOnlyMusic;
   ambientOnBreakEl.checked = settings.ambientOnBreak;
 
   // Timer initial render
   renderTimerTick({
-    mode:      timer.mode,
+    mode: timer.mode,
     remaining: timer.remaining,
-    total:     timer.totalSecs,
-    progress:  timer.progress,
-    running:   timer.running,
+    total: timer.totalSecs,
+    progress: timer.progress,
+    running: timer.running,
     dashOffset: 2 * Math.PI * 96,  // full circle = 0 progress
   });
   updateModeTab(timer.mode);
@@ -207,8 +207,8 @@ timer.addEventListener('complete', e => {
   if (mode === TimerMode.FOCUS) {
     sessions.increment();
     tasks.addEntry({
-      task:         taskInputEl.value.trim(),
-      mode:         'focus',
+      task: taskInputEl.value.trim(),
+      mode: 'focus',
       durationSecs: settings.focusMins * 60,
     });
     taskInputEl.value = '';
@@ -226,7 +226,7 @@ timer.addEventListener('complete', e => {
 
 btnStart.addEventListener('click', () => { ambient.resume(); timer.toggle(); });
 btnReset.addEventListener('click', () => timer.reset());
-btnSkip.addEventListener('click',  () => timer.skip());
+btnSkip.addEventListener('click', () => timer.skip());
 
 modeTabs.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -235,6 +235,70 @@ modeTabs.forEach(tab => {
     updateModeTab(mode);
   });
 });
+
+// ── Timer Circle Drag-to-Rotate ───────────────────────────────────
+
+let isDraggingTimer = false;
+let timerWasRunning = false;
+
+function calculateSecondsFromPointer(e) {
+  const rect = timerFaceEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+
+  let angle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (angle < 0) {
+    angle += 2 * Math.PI;
+  }
+
+  const progress = angle / (2 * Math.PI);
+  return timer.totalSecs * (1 - progress);
+}
+
+timerFaceEl.addEventListener('pointerdown', e => {
+  // Only handle left click or touch/pen pointer
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+  isDraggingTimer = true;
+  timerWasRunning = timer.running;
+  if (timerWasRunning) {
+    timer.pause();
+  }
+
+  timerFaceEl.classList.add('dragging');
+  timerFaceEl.setPointerCapture(e.pointerId);
+
+  const seconds = calculateSecondsFromPointer(e);
+  timer.setRemaining(seconds, true);
+});
+
+timerFaceEl.addEventListener('pointermove', e => {
+  if (!isDraggingTimer) return;
+  const seconds = calculateSecondsFromPointer(e);
+  timer.setRemaining(seconds, true);
+});
+
+function endTimerDrag(e) {
+  if (!isDraggingTimer) return;
+  isDraggingTimer = false;
+  timerFaceEl.classList.remove('dragging');
+  try {
+    timerFaceEl.releasePointerCapture(e.pointerId);
+  } catch (err) { }
+
+  const seconds = calculateSecondsFromPointer(e);
+  timer.setRemaining(seconds, false);
+
+  if (timerWasRunning && timer.remaining > 0) {
+    timer.start();
+  }
+}
+
+timerFaceEl.addEventListener('pointerup', endTimerDrag);
+timerFaceEl.addEventListener('pointercancel', endTimerDrag);
 
 // ── Radio events ──────────────────────────────────────────────────
 
@@ -312,7 +376,7 @@ btnCancelAdd.addEventListener('click', hideAddForm);
 
 btnConfirmAdd.addEventListener('click', () => {
   const name = addNameEl.value.trim();
-  const url  = addUrlEl.value.trim();
+  const url = addUrlEl.value.trim();
   if (!name) { addNameEl.focus(); return; }
 
   const ytId = parseYouTubeId(url);
@@ -325,9 +389,9 @@ btnConfirmAdd.addEventListener('click', () => {
   addUrlEl.setCustomValidity('');
 
   const station = {
-    id:        'custom-' + Date.now(),
+    id: 'custom-' + Date.now(),
     name,
-    genre:     addGenreEl.value.trim() || 'Custom',
+    genre: addGenreEl.value.trim() || 'Custom',
     streamUrl: '',   // YouTube-only
     ytVideoId: ytId,
   };
@@ -376,9 +440,9 @@ ambientOnBreakEl.addEventListener('change', () => {
 
 // ── Task log ──────────────────────────────────────────────────────
 
-tasks.addEventListener('add',    () => refreshTaskLog());
+tasks.addEventListener('add', () => refreshTaskLog());
 tasks.addEventListener('delete', () => refreshTaskLog());
-tasks.addEventListener('clear',  () => refreshTaskLog());
+tasks.addEventListener('clear', () => refreshTaskLog());
 
 btnClearLog.addEventListener('click', () => {
   if (confirm('Clear all session history?')) tasks.clearAll();
@@ -392,9 +456,9 @@ sessions.addEventListener('update', e => {
 
 // ── Settings panel ────────────────────────────────────────────────
 
-btnOpenSettings.addEventListener('click',  openSettings);
+btnOpenSettings.addEventListener('click', openSettings);
 btnCloseSettings.addEventListener('click', closeSettings);
-settingsBack.addEventListener('click',     closeSettings);
+settingsBack.addEventListener('click', closeSettings);
 
 btnResetSettings.addEventListener('click', () => {
   if (confirm('Reset all settings to defaults?')) {
@@ -407,10 +471,10 @@ btnResetSettings.addEventListener('click', () => {
 
 // Live-update settings on input
 [
-  ['s-focus',        v => settings.set({ focusMins:         +v })],
-  ['s-short',        v => settings.set({ shortMins:         +v })],
-  ['s-long',         v => settings.set({ longMins:          +v })],
-  ['s-interval',     v => settings.set({ longBreakInterval: +v })],
+  ['s-focus', v => settings.set({ focusMins: +v })],
+  ['s-short', v => settings.set({ shortMins: +v })],
+  ['s-long', v => settings.set({ longMins: +v })],
+  ['s-interval', v => settings.set({ longBreakInterval: +v })],
 ].forEach(([id, fn]) => {
   $(id).addEventListener('change', e => {
     fn(e.target.value);
@@ -449,7 +513,7 @@ $('btn-theme').addEventListener('click', () => {
 
 document.addEventListener('keydown', e => {
   // Ignore when typing in an input/textarea
-  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
   switch (e.key) {
     case ' ':
@@ -491,9 +555,9 @@ document.addEventListener('keydown', e => {
 
 // ── Render helpers ────────────────────────────────────────────────
 
-function renderTimerTick({ mode, remaining, dashOffset, running }) {
-  const m  = String(Math.floor(remaining / 60)).padStart(2, '0');
-  const s  = String(remaining % 60).padStart(2, '0');
+function renderTimerTick({ mode, remaining, dashOffset, running, progress }) {
+  const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const s = String(remaining % 60).padStart(2, '0');
   timerDigitsEl.textContent = `${m}:${s}`;
 
   const labels = { focus: 'Focus', short: 'Short Break', long: 'Long Break' };
@@ -521,8 +585,8 @@ function renderStations() {
   all.forEach((s, idx) => {
     const isCustom = idx >= STATIONS.length;
     const card = document.createElement('div');
-    card.className   = 'station-card' + (idx === settings.currentStation ? ' active' : '');
-    card.role        = 'option';
+    card.className = 'station-card' + (idx === settings.currentStation ? ' active' : '');
+    card.role = 'option';
     card.dataset.idx = idx;
     card.setAttribute('aria-selected', idx === settings.currentStation ? 'true' : 'false');
 
@@ -585,10 +649,10 @@ function renderAmbientTracks() {
   ambientTracksEl.innerHTML = '';
   AMBIENT_TRACKS.forEach(def => {
     const savedVol = settings.ambientTrackVols[def.id] ?? Math.round(def.defaultVol * 100);
-    const div  = document.createElement('div');
-    div.className   = 'ambient-track';
-    div.role        = 'listitem';
-    div.dataset.id  = def.id;
+    const div = document.createElement('div');
+    div.className = 'ambient-track';
+    div.role = 'listitem';
+    div.dataset.id = def.id;
     div.innerHTML = `
       <div class="ambient-track-header">
         <span class="ambient-icon">${def.icon}</span>
@@ -629,7 +693,7 @@ function renderAmbientTracks() {
 function applyAudioMode(mode) {
   audioModeBtns.forEach(b => b.classList.toggle('active', b.dataset.audioMode === mode));
 
-  const showRadio   = mode === 'radio'   || mode === 'both';
+  const showRadio = mode === 'radio' || mode === 'both';
   const showAmbient = mode === 'ambient' || mode === 'both';
   radioPanel.classList.toggle('hidden', !showRadio);
   ambientPanel.classList.toggle('hidden', !showAmbient);
@@ -685,12 +749,12 @@ function closeSettings() {
 }
 
 function syncSettingsPanel() {
-  $('s-focus').value    = settings.focusMins;
-  $('s-short').value    = settings.shortMins;
-  $('s-long').value     = settings.longMins;
+  $('s-focus').value = settings.focusMins;
+  $('s-short').value = settings.shortMins;
+  $('s-long').value = settings.longMins;
   $('s-interval').value = settings.longBreakInterval;
   $('s-auto-advance').checked = settings.autoAdvance;
-  $('s-chime-volume').value   = settings.chimeVolume;
+  $('s-chime-volume').value = settings.chimeVolume;
   $('s-chime-value').textContent = settings.chimeVolume + '%';
   setSliderFill($('s-chime-volume'), settings.chimeVolume);
   sThemeEl.value = settings.theme;
@@ -701,7 +765,7 @@ function applySettingsToModules() {
   radio.setVolume(settings.radioVolume / 100);
   ambient.setMasterVolume(settings.ambientMasterVol / 100);
   chime.setVolume(settings.chimeVolume / 100);
-  focusOnlyEl.checked      = settings.focusOnlyMusic;
+  focusOnlyEl.checked = settings.focusOnlyMusic;
   ambientOnBreakEl.checked = settings.ambientOnBreak;
   applyAudioMode(settings.audioMode);
   renderSessionDots(sessionDotsEl, sessions.setCount, settings.longBreakInterval);
@@ -714,8 +778,8 @@ function setSliderFill(el, pct) {
 
 function escHtml(str) {
   return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────
