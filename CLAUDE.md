@@ -4,6 +4,20 @@
 
 A single-file-open-in-browser web app. No server, no build step, no package.json. The constraint is intentional — it keeps the project permanently runnable without tooling rot.
 
+## How to run
+
+Due to browser CORS policies preventing ES Modules (`import`/`export`) from loading via `file://` directly from the filesystem, you must serve the application over HTTP.
+
+Use the provided helper script:
+```bash
+./run.sh
+```
+This automatically finds an available port starting at `8080`, launches a local Python HTTP server, and opens your default browser.
+
+Alternatively, you can run any standard local server:
+* `python3 -m http.server 8080`
+* `npx serve`
+
 ## Core philosophy
 
 **Audio is the product.** The timer is a scaffold. When in doubt, prioritize audio continuity, volume smoothness, and stream reliability over anything else. A broken timer is annoying; broken audio kills the experience.
